@@ -76,7 +76,7 @@ typedef struct wifi_c_scan_result_obj wifi_c_scan_result_t;
 #define WIFI_C_SCAN_DONE_BIT            0x00000004
 #define WIFI_C_STA_STARTED_BIT          0x00000008
 
-#define WIFI_C_SCAN_BLOCK               false
+#define WIFI_C_SCAN_BLOCK               true
 
 /**
  * @brief Used to initialize and prepare Wifi to work.
@@ -141,9 +141,15 @@ int wifi_c_create_default_event_loop(void);
 /**
  * @brief Scan for AP on all channels.
  * 
- * @return wifi_c_scan_result_t* Pointer to scan results struct.
+ * @param result_to_return Pointer to scan results struct.
+ * @return
+ *          - ERR_C_OK on success
+ *          - WIFI_C_ERR_WRONG_MODE Wrong Wifi mode, scanning only possible in STA/APSTA mode.
+ *          - WIFI_C_ERR_WIFI_NOT_INIT WiFi was not initialized.
+ *          - WIFI_C_ERR_STA_NOT_STARTED STA was not started.
+ *          - esp specific error codes
  */
-wifi_c_scan_result_t* wifi_c_scan_all_ap(void);
+int wifi_c_scan_all_ap(wifi_c_scan_result_t* result_to_return);
 
 /**
  * @brief Scan for AP with desired SSID.

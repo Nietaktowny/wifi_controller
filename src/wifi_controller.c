@@ -9,8 +9,13 @@
 #include "esp_mac.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+/*
+#include "ping/ping_sock.h"
+#include "lwip/inet.h"
+#include "lwip/netdb.h"
+#include "lwip/sockets.h"
+*/
 #include <string.h>
-
 #include "err_controller.h"
 #include "wifi_controller.h"
 
@@ -21,7 +26,6 @@ static void wifi_c_ap_event_handler(void *arg, esp_event_base_t event_base,
 
 static void wifi_c_sta_event_handler (void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data);
-
 
 static const char* LOG = "wifi_controller";
 
@@ -38,6 +42,8 @@ static wifi_c_status_t wifi_c_status = {
 };
 
 static EventGroupHandle_t wifi_c_event_group;
+
+static uint8_t wifi_sta_retry_num;
 
 /*Variables needed for scan.*/
 static wifi_ap_record_t ap_info[WIFI_C_DEFAULT_SCAN_SIZE];
@@ -61,7 +67,6 @@ static void wifi_c_ap_event_handler(void *arg, esp_event_base_t event_base,
     }
 }
 
-
 static void wifi_c_sta_event_handler (void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data)
 {
@@ -70,6 +75,15 @@ static void wifi_c_sta_event_handler (void *arg, esp_event_base_t event_base,
         ESP_LOGI(LOG, "Station started, connecting to WiFi.");
         wifi_c_status.sta_started = true;
         xEventGroupSetBits(wifi_c_event_group, WIFI_C_STA_STARTED_BIT);
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        if(wifi_sta_retry_num < WIFI_C_STA_RETRY_COUNT) {
+            esp_wifi_connect();
+            wifi_sta_retry_num++;
+            ESP_LOGI(LOG, "Failed to connect to AP, trying again.");
+        } else {
+            ESP_LOGW(LOG, "Failed to connect to AP!");
+            xEventGroupSetBits(wifi_c_event_group, WIFI_C_CONNECT_FAIL_BIT);
+        }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
         ESP_LOGI(LOG, "Got IP:" IPSTR, IP2STR(&event->ip_info.ip));
@@ -200,7 +214,6 @@ int wifi_c_init_wifi(wifi_c_mode_t WIFI_C_WIFI_MODE) {
     return err;
 }
 
-
 int wifi_c_start_ap(const char* ssid, const char* password) {
     volatile err_c_t err = ERR_C_OK;
     wifi_config_t wifi_ap_config = {
@@ -270,7 +283,6 @@ int wifi_c_start_ap(const char* ssid, const char* password) {
     return err;
 }
 
-
 int wifi_c_start_sta(const char* ssid, const char* password) {
     volatile err_c_t err = ERR_C_OK;
     wifi_config_t wifi_sta_config = {
@@ -338,8 +350,7 @@ int wifi_c_start_sta(const char* ssid, const char* password) {
     return err;
 }
 
-
-wifi_c_scan_result_t* wifi_c_scan_all_ap(void) {
+int wifi_c_scan_all_ap(wifi_c_scan_result_t* result_to_return) {
     volatile err_c_t err = ERR_C_OK;
     wifi_scan_config_t scan_config = {
         //.ssid = NULL,                   //Search for AP with any SSID.
@@ -350,6 +361,7 @@ wifi_c_scan_result_t* wifi_c_scan_all_ap(void) {
     wifi_scan_info.ap_count = WIFI_C_DEFAULT_SCAN_SIZE;
 
     Try {
+        assert(result_to_return);
 
         if(wifi_c_status.wifi_mode == WIFI_C_MODE_AP) {
             ERR_C_SET_AND_THROW_ERR(err, WIFI_C_ERR_WRONG_MODE); // scans are only allowed in STA mode.
@@ -379,6 +391,9 @@ wifi_c_scan_result_t* wifi_c_scan_all_ap(void) {
         ERR_C_CHECK_AND_THROW_ERR(esp_wifi_scan_get_ap_records(&wifi_scan_info.ap_count, &ap_info[0]));
         ERR_C_CHECK_AND_THROW_ERR(esp_wifi_scan_get_ap_num(&(wifi_scan_info.ap_count)));
         wifi_scan_info.ap_record = &ap_info[0];
+
+        /*Point passed pointer to scan results*/
+        result_to_return = &wifi_scan_info;
     } Catch (err) {
         switch (err)
         {
@@ -399,7 +414,7 @@ wifi_c_scan_result_t* wifi_c_scan_all_ap(void) {
         memset(&wifi_scan_info, 0, sizeof(wifi_scan_info));
     }
     
-    return &wifi_scan_info;
+    return err;
 }
 
 int wifi_c_scan_for_ap_with_ssid(const char* searched_ssid, wifi_ap_record_t* ap_record) {
@@ -409,7 +424,7 @@ int wifi_c_scan_for_ap_with_ssid(const char* searched_ssid, wifi_ap_record_t* ap
     bool success = false;
 
     Try {
-        assert(wifi_c_scan_all_ap());
+        assert(&wifi_scan_info);
         record = wifi_scan_info.ap_record;
         uint8_t ssid_len = strlen(searched_ssid);
 
@@ -451,13 +466,17 @@ int wifi_c_print_scanned_ap (void) {
             ERR_C_SET_AND_THROW_ERR(err, WIFI_C_ERR_WIFI_NOT_INIT);
         }
             
+        /*If scan is not yet done, wait for a while before continuing
+        Then bits, if it's again not done, then throw errror.*/
         if(!(wifi_c_status.scan_done)) {
-            ERR_C_SET_AND_THROW_ERR(err, WIFI_C_ERR_SCAN_NOT_DONE);
+            EventBits_t bits = xEventGroupWaitBits(wifi_c_event_group, WIFI_C_SCAN_DONE_BIT, pdTRUE, pdFALSE, pdMS_TO_TICKS(1000));
+            if((bits & WIFI_C_SCAN_DONE_BIT) != WIFI_C_SCAN_DONE_BIT) {
+                ERR_C_SET_AND_THROW_ERR(err, WIFI_C_ERR_SCAN_NOT_DONE);
+            }
         }
             
         wifi_ap_record_t* record = wifi_scan_info.ap_record;
-
-        for (uint16_t i = 0; i < wifi_scan_info.ap_count; i++)
+        for (uint16_t i = 0; i < WIFI_C_DEFAULT_SCAN_SIZE; i++)
         {
             const char* ssid = (char*) (record->ssid); 
             int8_t rssi = record->rssi;
