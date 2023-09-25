@@ -1,4 +1,4 @@
-#include "nvs.h"
+#include "nvs_flash.h"
 #include "esp_err.h"
 #include "wifi_controller.h"
 
@@ -12,11 +12,12 @@ void app_main(void)
     }
     ESP_ERROR_CHECK( ret );
 
-    /*STA example*/
+    /*AP+STA example*/
 
     //Init Wifi
-    ESP_ERROR_CHECK(wifi_c_init_wifi(WIFI_C_MODE_STA));
+    ESP_ERROR_CHECK(wifi_c_init_wifi(WIFI_C_MODE_APSTA));
     //Start STA and connect to AP:
-    ESP_ERROR_CHECK(wifi_c_start_sta("SSID", "PASSWORD"));
-
+    ESP_ERROR_CHECK(wifi_c_start_sta("STA_SSID", "STA_PASSWORD"));
+    //Start AP with passed credentials:
+    ESP_ERROR_CHECK(wifi_c_start_ap("AP_SSID", "AP_PASSWORD"));
 }

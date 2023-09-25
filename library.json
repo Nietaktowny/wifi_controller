@@ -1,6 +1,6 @@
 {
     "name": "wifi_controller",
-    "version": "1.1.2",
+    "version": "1.1.5",
     "keywords": "WiFi, driver, controller, espressif32",
     "description": "Controller library used to control WiFi with ESP-IDF.",
     "dependencies": {
@@ -8,10 +8,31 @@
     },
     "examples": [
         {
-            "name": "Connect as STA to AP",
+            "name": "STA example",
             "base": "examples",
             "files": [
                 "start_sta_example.c"
+            ]
+        },
+        {
+            "name": "AP example",
+            "base":"examples",
+            "files": [
+                "start_ap_example.c"
+            ]
+        },
+        {
+            "name": "AP and STA example",
+            "base":"examples",
+            "files": [
+                "start_apsta_example.c"
+            ]
+        },
+        {
+            "name": "STA scan example",
+            "base":"examples",
+            "files": [
+                "sta_scan_example.c"
             ]
         }
     ],
