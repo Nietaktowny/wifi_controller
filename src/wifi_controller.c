@@ -196,13 +196,15 @@ int wifi_c_init_wifi(wifi_c_mode_t WIFI_C_WIFI_MODE) {
         ERR_C_CHECK_AND_THROW_ERR(wifi_c_init_netif(WIFI_C_WIFI_MODE));
         ERR_C_CHECK_AND_THROW_ERR(esp_wifi_init(&wifi_init_config));
         ESP_LOGI(LOG, "Wifi initialized.");
+        //Update wifi controller status
+        wifi_c_status.wifi_initialized = true;
+        wifi_c_status.wifi_mode = WIFI_C_WIFI_MODE;
         ERR_C_CHECK_AND_THROW_ERR(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
         ERR_C_CHECK_AND_THROW_ERR(esp_wifi_set_mode(wifi_c_select_wifi_mode(WIFI_C_WIFI_MODE)));
         ERR_C_CHECK_AND_THROW_ERR(esp_wifi_start());
-        ESP_LOGD(LOG, "wifi successfully initialized");
+        ESP_LOGD(LOG, "wifi successfully started");
         //Update wifi controller status.
-        wifi_c_status.wifi_initialized = true;
-        wifi_c_status.wifi_mode = WIFI_C_WIFI_MODE;
+        wifi_c_status.wifi_started = true;
     } 
     Catch(err) {
         if(err == WIFI_C_ERR_WIFI_ALREADY_INIT) {
@@ -551,7 +553,7 @@ int wifi_c_store_scanned_ap (char buffer[], uint16_t buflen) {
 }
 
 int wifi_c_deinit(void) {
-    err_c_t err = ERR_C_OK;
+    volatile err_c_t err = ERR_C_OK;
 
     Try {
         if(!wifi_c_status.wifi_started) {
