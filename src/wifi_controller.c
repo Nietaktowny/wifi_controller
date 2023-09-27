@@ -575,6 +575,13 @@ int wifi_c_deinit(void) {
         ERR_C_CHECK_AND_THROW_ERR(esp_netif_deinit());
         wifi_c_status.netif_initialized = false;
 
+        if(!wifi_c_status.even_loop_started) {
+            ERR_C_SET_AND_THROW_ERR(err, WIFI_C_EVENT_LOOP_NOT_INIT);
+        }
+
+        ERR_C_CHECK_AND_THROW_ERR(esp_event_loop_delete_default());
+        wifi_c_status.even_loop_started = false;
+
     } 
     Catch(err) {
         switch (err)
@@ -587,7 +594,10 @@ int wifi_c_deinit(void) {
             break;
         case WIFI_C_NEITF_NOT_INIT:
             ESP_LOGE(LOG, "netif interface was not initialized.");
-            break;        
+            break;
+        case WIFI_C_EVENT_LOOP_NOT_INIT:
+            ESP_LOGE(LOG, "Event loop was not started.");
+            break;             
         default:
             ESP_LOGE(LOG, "Error when deinitializing wifi controller.");
             break;

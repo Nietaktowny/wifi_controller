@@ -68,6 +68,7 @@ typedef struct wifi_c_scan_result_obj wifi_c_scan_result_t;
 #define WIFI_C_ERR_STA_NOT_STARTED      WIFI_C_ERR_BASE + 0x0A      ///< Trying to scan without configuring nad starting STA.
 #define WIFI_C_AP_NOT_FOUND             WIFI_C_ERR_BASE + 0x0B      ///< Not found desired AP when scanning.
 #define WIFI_C_NEITF_NOT_INIT           WIFI_C_ERR_BASE + 0x0C      ///< Netif was not initialized.
+#define WIFI_C_EVENT_LOOP_NOT_INIT      WIFI_C_ERR_BASE + 0x0D      ///< Event loop was not started.
 
 #define WIFI_C_STA_RETRY_COUNT          4                           ///< Number of times to try to connect to AP as STA.
 #define WIFI_C_DEFAULT_SCAN_SIZE        10                          ///< Number of APs to store when scanning.
@@ -172,5 +173,28 @@ int wifi_c_scan_for_ap_with_ssid(const char* searched_ssid, wifi_ap_record_t* ap
  */
 int wifi_c_print_scanned_ap (void);
 
+/**
+ * @brief Store results of scanning in buffer as string.
+ * 
+ * @param buffer Buffer to store scan result.
+ * @param buflen Length of the buffer.
+ * @return
+ *          - ERR_C_OK on success
+ *          - WIFI_C_ERR_SCAN_NOT_DONE Scan not done, init scan before getting results.
+ *          - WIFI_C_ERR_WIFI_NOT_INIT WiFi was not initialized.
+ *          - esp specific error codes
+ */
+int wifi_c_store_scanned_ap (char buffer[], uint16_t buflen);
 
-int wifi_c_store_scanned_ap (char buffer[], uint16_t buflen) ;
+/**
+ * @brief Used to deinit wifi controller, and free all resources.
+ * 
+ * @return
+ *          - ERR_C_OK on success
+ *          - WIFI_C_ERR_WIFI_NOT_STARTED   Wifi was not started.
+ *          - WIFI_C_ERR_WIFI_NOT_INIT      WiFi was not initialized.
+ *          - WIFI_C_NEITF_NOT_INIT         Netif interface was not initialized.
+ *          - WIFI_C_EVENT_LOOP_NOT_INIT    Event loop was not started.
+ *          - esp specific error codes
+ */
+int wifi_c_deinit(void);
