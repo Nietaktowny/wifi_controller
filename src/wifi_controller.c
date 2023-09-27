@@ -41,6 +41,8 @@ static wifi_c_status_t wifi_c_status = {
     .sta_connected = false,
 };
 
+static esp_netif_t *esp_netif_apsta;
+
 static EventGroupHandle_t wifi_c_event_group;
 
 static uint8_t wifi_sta_retry_num;
@@ -94,7 +96,6 @@ static void wifi_c_sta_event_handler (void *arg, esp_event_base_t event_base,
 
 static err_c_t wifi_c_init_netif(wifi_c_mode_t WIFI_C_WIFI_MODE) {
     volatile err_c_t err = ERR_C_OK;
-    esp_netif_t *esp_netif_apsta;
 
     switch (WIFI_C_WIFI_MODE)
     {
@@ -575,6 +576,7 @@ int wifi_c_deinit(void) {
         }
 
         ERR_C_CHECK_AND_THROW_ERR(esp_netif_deinit());
+        esp_netif_destroy(esp_netif_apsta);
         wifi_c_status.netif_initialized = false;
 
         if(!wifi_c_status.even_loop_started) {
