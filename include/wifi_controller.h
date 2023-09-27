@@ -67,6 +67,7 @@ typedef struct wifi_c_scan_result_obj wifi_c_scan_result_t;
 #define WIFI_C_ERR_SCAN_NOT_DONE        WIFI_C_ERR_BASE + 0x09      ///< Trying to read scan results without prior scanning.
 #define WIFI_C_ERR_STA_NOT_STARTED      WIFI_C_ERR_BASE + 0x0A      ///< Trying to scan without configuring nad starting STA.
 #define WIFI_C_AP_NOT_FOUND             WIFI_C_ERR_BASE + 0x0B      ///< Not found desired AP when scanning.
+#define WIFI_C_NEITF_NOT_INIT           WIFI_C_ERR_BASE + 0x0C      ///< Netif was not initialized.
 
 #define WIFI_C_STA_RETRY_COUNT          4                           ///< Number of times to try to connect to AP as STA.
 #define WIFI_C_DEFAULT_SCAN_SIZE        10                          ///< Number of APs to store when scanning.
@@ -127,7 +128,7 @@ int wifi_c_start_sta(const char* ssid, const char* password);
  * 
  * @return wifi_status_t* Pointer to wifi_controller status struct.
  */
-const wifi_c_status_t *wifi_c_get_status(void);
+wifi_c_status_t *wifi_c_get_status(void);
 
 /**
  * @brief Initializes default event loop and sets callback functions.
@@ -170,3 +171,6 @@ int wifi_c_scan_for_ap_with_ssid(const char* searched_ssid, wifi_ap_record_t* ap
  * 
  */
 int wifi_c_print_scanned_ap (void);
+
+
+int wifi_c_store_scanned_ap (char buffer[], uint16_t buflen) ;

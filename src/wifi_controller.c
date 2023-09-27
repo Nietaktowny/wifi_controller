@@ -179,7 +179,7 @@ int wifi_c_create_default_event_loop(void) {
     return err;
 }
 
-const wifi_c_status_t *wifi_c_get_status(void) {
+wifi_c_status_t *wifi_c_get_status(void) {
     return &wifi_c_status;
 }
 
@@ -502,4 +502,98 @@ int wifi_c_print_scanned_ap (void) {
     return err;
 }
 
+
+int wifi_c_store_scanned_ap (char buffer[], uint16_t buflen) {
+    volatile err_c_t err = ERR_C_OK;
+    Try {
+        if(!(wifi_c_status.wifi_initialized)) {
+            ERR_C_SET_AND_THROW_ERR(err, WIFI_C_ERR_WIFI_NOT_INIT);
+        }
+            
+        /*If scan is not yet done, wait for a while before continuing
+        Then bits, if it's again not done, then throw errror.*/
+        if(!(wifi_c_status.scan_done)) {
+            EventBits_t bits = xEventGroupWaitBits(wifi_c_event_group, WIFI_C_SCAN_DONE_BIT, pdTRUE, pdFALSE, pdMS_TO_TICKS(1000));
+            if((bits & WIFI_C_SCAN_DONE_BIT) != WIFI_C_SCAN_DONE_BIT) {
+                ERR_C_SET_AND_THROW_ERR(err, WIFI_C_ERR_SCAN_NOT_DONE);
+            }
+        }
+        uint16_t space_left = buflen;
+        uint16_t ssid_len = 0;
+        const char* newline = "\n"; 
+        wifi_ap_record_t* record = wifi_scan_info.ap_record;
+        strncat(&buffer[0], newline, sizeof(strlen(newline)));
+        for (uint16_t i = 0; i < WIFI_C_DEFAULT_SCAN_SIZE; i++)
+        {
+            char* ssid = (char*) (record->ssid);
+            strncat(ssid, newline, sizeof(strlen(newline)));
+            ssid_len = strlen(ssid);
+            space_left = space_left - ssid_len;
+            strncat(&buffer[1], ssid, space_left);
+            record++;
+        }
+    } Catch(err) {
+        switch (err)
+        {
+        case WIFI_C_ERR_SCAN_NOT_DONE:
+            ESP_LOGE(LOG, "Scan not done, init scan before getting results.");
+            break;
+        case WIFI_C_ERR_WIFI_NOT_INIT:
+            ESP_LOGE(LOG, "WiFi was not initialized.");
+            break;    
+        default:
+            ESP_LOGE(LOG, "Error when getting scan results: %d \nESP-IDF error: %s", err, esp_err_to_name((esp_err_t) err));
+            break;
+        }
+    }
+
+    return err;
+}
+
+int wifi_c_deinit(void) {
+    err_c_t err = ERR_C_OK;
+
+    Try {
+        if(!wifi_c_status.wifi_started) {
+            ERR_C_SET_AND_THROW_ERR(err, WIFI_C_ERR_WIFI_NOT_STARTED);
+        }
+
+        ERR_C_CHECK_AND_THROW_ERR(esp_wifi_stop());
+        wifi_c_status.wifi_started = false;
+
+        if(!wifi_c_status.wifi_initialized) {
+            ERR_C_SET_AND_THROW_ERR(err, WIFI_C_ERR_WIFI_NOT_INIT);
+        }
+
+        ERR_C_CHECK_AND_THROW_ERR(esp_wifi_deinit());
+        wifi_c_status.wifi_initialized = false;
+
+        if(!wifi_c_status.netif_initialized) {
+            ERR_C_SET_AND_THROW_ERR(err, WIFI_C_NEITF_NOT_INIT);
+        }
+
+        ERR_C_CHECK_AND_THROW_ERR(esp_netif_deinit());
+        wifi_c_status.netif_initialized = false;
+
+    } 
+    Catch(err) {
+        switch (err)
+        {
+        case WIFI_C_ERR_WIFI_NOT_STARTED:
+            ESP_LOGE(LOG, "Wifi was not started.");
+            break;
+        case WIFI_C_ERR_WIFI_NOT_INIT:
+            ESP_LOGE(LOG, "WiFi was not initialized.");
+            break;
+        case WIFI_C_NEITF_NOT_INIT:
+            ESP_LOGE(LOG, "netif interface was not initialized.");
+            break;        
+        default:
+            ESP_LOGE(LOG, "Error when deinitializing wifi controller.");
+            break;
+        }
+    }
+
+    return err;
+}
 #endif //ESP_PLATFORM
