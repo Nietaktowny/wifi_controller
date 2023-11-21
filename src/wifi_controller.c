@@ -551,7 +551,7 @@ int wifi_c_store_scanned_ap (char buffer[], uint16_t buflen) {
 }
 
 int wifi_c_deinit(void) {
-    err_c_t err = ERR_C_OK;
+    volatile err_c_t err = ERR_C_OK;
 
     Try {
         if(!wifi_c_status.wifi_started) {
