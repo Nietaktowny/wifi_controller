@@ -4,7 +4,8 @@
     "keywords": "WiFi, driver, controller, espressif32",
     "description": "Controller library used to control WiFi with ESP-IDF.",
     "dependencies": {
-        "nietaktowny/err_controller": "^1.0.2"
+        "nietaktowny/err_controller": "^1.0.2",
+        "nietaktowny/logger": "^1.0.0"
     },
     "examples": [
         {
